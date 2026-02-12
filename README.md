@@ -97,6 +97,3 @@ pip install -r requirements.txt
 streamlit run app.py
 
 
-👤 Author
-Pulkam Naveen
-https://github.com/pulkamnaveen
