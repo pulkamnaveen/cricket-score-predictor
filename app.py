@@ -14,6 +14,15 @@ def balls_from_overs(ov):
     return o * 6 + b
 
 
+def overs_from_balls(balls):
+    o = balls // 6
+    b = balls % 6
+    if b == 0:
+        # represent as previous over's 6th ball if balls > 0
+        return float(f"{o}.0") if balls == 0 else float(f"{o-1}.6") if o > 0 else 0.0
+    return float(f"{o}.{b}")
+
+
 # ---------------- Load model ----------------
 @st.cache_resource
 def load_model():
