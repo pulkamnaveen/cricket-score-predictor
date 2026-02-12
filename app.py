@@ -8,19 +8,32 @@ st.title("Cricket Score Predictor")
 
 # ---------------- Helpers for overs ----------------
 
+def next_ball(ov):
+    o = int(ov)
+    b = int(round((ov - o) * 10))
+    b += 1
+    if b > 6:
+        o += 1
+        b = 1
+    return float(f"{o}.{b}")
+
+
+def prev_ball(ov):
+    o = int(ov)
+    b = int(round((ov - o) * 10))
+    b -= 1
+    if b < 1:
+        o -= 1
+        b = 6
+    if o < 0:
+        return 0.1
+    return float(f"{o}.{b}")
+
+
 def balls_from_overs(ov):
     o = int(ov)
     b = int(round((ov - o) * 10))
     return o * 6 + b
-
-
-def overs_from_balls(balls):
-    o = balls // 6
-    b = balls % 6
-    if b == 0:
-        # represent as previous over's 6th ball if balls > 0
-        return float(f"{o}.0") if balls == 0 else float(f"{o-1}.6") if o > 0 else 0.0
-    return float(f"{o}.{b}")
 
 
 # ---------------- Load model ----------------
@@ -58,12 +71,6 @@ cities = ['Dubai','Wellington','Cape Town','Kuala Lumpur','Hamilton','Christchur
           'Pune','Dublin','Nagpur','Durban','Bristol','Entebbe','Providence',
           'Chittagong','Belfast','Rotterdam','Bulawayo','Visakhapatnam']
 
-# Valid over values: 0.1 through 19.6 (T20 format)
-valid_overs = []
-for o in range(0, 20):
-    for b in range(1, 7):
-        valid_overs.append(float(f"{o}.{b}"))
-
 # ---------------- UI ----------------
 
 col1, col2 = st.columns(2)
@@ -80,14 +87,43 @@ with col3:
     current_score = st.number_input("Current Score", min_value=0, max_value=500, value=100)
 
 with col4:
-    overs_completed = st.number_input(
-        "Overs Completed",
-        min_value=0.1,
-        max_value=19.6,
-        value=1.5,
-        step=0.1,
-        format="%.1f"
-    )
+    if "overs" not in st.session_state:
+        st.session_state.overs = 0.1
+
+    st.markdown("Overs Completed")
+
+    # Match the number_input widget's own +/- button layout
+    c1, c2, c3 = st.columns([1, 2, 1])
+
+    with c1:
+        minus_clicked = st.button("−", key="ov_minus", use_container_width=True)
+    with c2:
+        # Display value in a box styled to match number_input
+        st.markdown(
+            f"""<div style="
+                display:flex;align-items:center;justify-content:center;
+                height:38px;
+                background:rgb(38,39,48);
+                border:1px solid rgba(250,250,250,0.2);
+                border-radius:0.5rem;
+                color:white;
+                font-size:1rem;
+            ">{st.session_state.overs:.1f}</div>""",
+            unsafe_allow_html=True
+        )
+    with c3:
+        plus_clicked = st.button("+", key="ov_plus", use_container_width=True)
+
+    # Update state AFTER rendering so the new value shows on next rerun
+    if minus_clicked and st.session_state.overs > 0.1:
+        st.session_state.overs = prev_ball(st.session_state.overs)
+        st.rerun()
+
+    if plus_clicked and st.session_state.overs < 19.6:
+        st.session_state.overs = next_ball(st.session_state.overs)
+        st.rerun()
+
+    overs_completed = st.session_state.overs
 
 with col5:
     wickets_lost = st.number_input("Wickets Lost", min_value=0, max_value=10, value=2)
