@@ -8,40 +8,6 @@ st.title("Cricket Score Predictor")
 
 # ---------------- Helpers for overs ----------------
 
-def next_ball(ov):
-    o = int(ov)
-    b = int(round((ov - o) * 10))
-
-    if b == 0:
-        b = 1
-    else:
-        b += 1
-
-    if b > 6:
-        o += 1
-        b = 1
-
-    return float(f"{o}.{b}")
-
-
-def prev_ball(ov):
-    o = int(ov)
-    b = int(round((ov - o) * 10))
-
-    if b == 0:
-        return 0.0
-
-    b -= 1
-
-    if b == 0:
-        if o == 0:
-            return 0.0
-        o -= 1
-        b = 6
-
-    return float(f"{o}.{b}")
-
-
 def balls_from_overs(ov):
     o = int(ov)
     b = int(round((ov - o) * 10))
@@ -83,6 +49,12 @@ cities = ['Dubai','Wellington','Cape Town','Kuala Lumpur','Hamilton','Christchur
           'Pune','Dublin','Nagpur','Durban','Bristol','Entebbe','Providence',
           'Chittagong','Belfast','Rotterdam','Bulawayo','Visakhapatnam']
 
+# Valid over values: 0.1 through 19.6 (T20 format)
+valid_overs = []
+for o in range(0, 20):
+    for b in range(1, 7):
+        valid_overs.append(float(f"{o}.{b}"))
+
 # ---------------- UI ----------------
 
 col1, col2 = st.columns(2)
@@ -99,29 +71,14 @@ with col3:
     current_score = st.number_input("Current Score", min_value=0, max_value=500, value=100)
 
 with col4:
-
-    if "overs" not in st.session_state:
-        st.session_state.overs = 0.1
-
-    st.markdown("Overs Completed")
-
-    c1, c2, c3 = st.columns([1, 2, 1])
-
-    with c1:
-        if st.button("−", key="ov_minus"):
-            st.session_state.overs = prev_ball(st.session_state.overs)
-
-    with c2:
-        st.markdown(
-            f"<h4 style='text-align:center'>{st.session_state.overs:.1f}</h4>",
-            unsafe_allow_html=True
-        )
-
-    with c3:
-        if st.button("+", key="ov_plus"):
-            st.session_state.overs = next_ball(st.session_state.overs)
-
-    overs_completed = st.session_state.overs
+    overs_completed = st.number_input(
+        "Overs Completed",
+        min_value=0.1,
+        max_value=19.6,
+        value=1.5,
+        step=0.1,
+        format="%.1f"
+    )
 
 with col5:
     wickets_lost = st.number_input("Wickets Lost", min_value=0, max_value=10, value=2)
