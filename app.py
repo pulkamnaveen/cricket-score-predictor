@@ -6,12 +6,41 @@ import pandas as pd
 st.set_page_config(page_title="Cricket Score Predictor", layout="centered")
 st.title("Cricket Score Predictor")
 
+# ---------------- Overs helpers ----------------
+def add_ball(overs):
+    o = int(overs)
+    b = int(round((overs - o) * 10))
+
+    b += 1
+    if b == 6:
+        o += 1
+        b = 0
+
+    return float(f"{o}.{b}")
+
+
+def remove_ball(overs):
+    o = int(overs)
+    b = int(round((overs - o) * 10))
+
+    b -= 1
+    if b < 0:
+        o -= 1
+        b = 5
+
+    if o < 0:
+        return 0.0
+
+    return float(f"{o}.{b}")
+
+
 # ---------------- Load model ----------------
 @st.cache_resource
 def load_model():
     with open("xgb_pipeline.pkl", "rb") as f:
         model = pickle.load(f)
     return model
+
 
 try:
     pipe = load_model()
@@ -43,7 +72,19 @@ teams = ['Pakistan',
  'Bahrain',
  'Scotland',
  'Nepal']
-cities = ['Dubai', 'Wellington', 'Cape Town', 'Kuala Lumpur', 'Hamilton', 'Christchurch', "St George's", 'Pallekele', 'Edinburgh', 'Melbourne', 'Chattogram', 'Harare', 'Dhaka', 'Bangalore', 'Colombo', 'Basseterre', 'Cardiff', 'Johannesburg', 'Kigali City', 'Rajkot', 'Sydney', 'Napier', 'Auckland', 'Kandy', 'Canberra', 'Manchester', 'Bridgetown', 'Adelaide', 'Perth', 'Mumbai', 'Hambantota', 'Al Amarat', 'Hobart', 'Abu Dhabi', 'Chester-le-Street', 'Trinidad', 'Guyana', 'Nottingham', 'Sharjah', 'Tarouba', 'Southampton', 'St Lucia', 'Mirpur', 'Glasgow', 'London', 'Lahore', 'Brisbane', 'Mount Maunganui', 'Barbados', 'Karachi', 'Kolkata', 'Sylhet', 'Delhi', 'Chandigarh', 'Rawalpindi', 'Birmingham', 'Centurion', 'Gros Islet', 'Kingston', 'Mong Kok', 'Dambulla', 'Dharamsala', 'The Hague', 'Ahmedabad', 'Kirtipur', 'Lauderhill', 'Kathmandu', 'Kingstown', 'Pune', 'Dublin', 'Nagpur', 'Durban', 'Bristol', 'Entebbe', 'Providence', 'Chittagong', 'Belfast', 'Rotterdam', 'Bulawayo', 'Visakhapatnam']
+
+cities = ['Dubai', 'Wellington', 'Cape Town', 'Kuala Lumpur', 'Hamilton', 'Christchurch',
+ "St George's", 'Pallekele', 'Edinburgh', 'Melbourne', 'Chattogram', 'Harare', 'Dhaka',
+ 'Bangalore', 'Colombo', 'Basseterre', 'Cardiff', 'Johannesburg', 'Kigali City', 'Rajkot',
+ 'Sydney', 'Napier', 'Auckland', 'Kandy', 'Canberra', 'Manchester', 'Bridgetown', 'Adelaide',
+ 'Perth', 'Mumbai', 'Hambantota', 'Al Amarat', 'Hobart', 'Abu Dhabi', 'Chester-le-Street',
+ 'Trinidad', 'Guyana', 'Nottingham', 'Sharjah', 'Tarouba', 'Southampton', 'St Lucia',
+ 'Mirpur', 'Glasgow', 'London', 'Lahore', 'Brisbane', 'Mount Maunganui', 'Barbados',
+ 'Karachi', 'Kolkata', 'Sylhet', 'Delhi', 'Chandigarh', 'Rawalpindi', 'Birmingham',
+ 'Centurion', 'Gros Islet', 'Kingston', 'Mong Kok', 'Dambulla', 'Dharamsala', 'The Hague',
+ 'Ahmedabad', 'Kirtipur', 'Lauderhill', 'Kathmandu', 'Kingstown', 'Pune', 'Dublin',
+ 'Nagpur', 'Durban', 'Bristol', 'Entebbe', 'Providence', 'Chittagong', 'Belfast',
+ 'Rotterdam', 'Bulawayo', 'Visakhapatnam']
 
 # ---------------- UI ----------------
 col1, col2 = st.columns(2)
@@ -55,14 +96,43 @@ with col2:
 city = st.selectbox("City", sorted(cities))
 
 col3, col4, col5 = st.columns(3)
+
 with col3:
-    current_score = st.number_input("Current Score", min_value=0, max_value=500, value=100)
-with col4:
-    overs_completed = st.number_input(
-        "Overs Completed", min_value=0.0, max_value=20.0, value=10.0, step=0.1
+    current_score = st.number_input(
+        "Current Score", min_value=0, max_value=500, value=100
     )
+
+with col4:
+
+    if "overs_completed" not in st.session_state:
+        st.session_state.overs_completed = 10.0
+
+    st.markdown("Overs Completed")
+
+    c1, c2, c3 = st.columns([1, 2, 1])
+
+    with c1:
+        if st.button("−", key="overs_minus"):
+            st.session_state.overs_completed = remove_ball(
+                st.session_state.overs_completed
+            )
+
+    with c2:
+        st.write(f"**{st.session_state.overs_completed:.1f}**")
+
+    with c3:
+        if st.button("+", key="overs_plus"):
+            st.session_state.overs_completed = add_ball(
+                st.session_state.overs_completed
+            )
+
+    overs_completed = st.session_state.overs_completed
+
+
 with col5:
-    wickets_lost = st.number_input("Wickets Lost", min_value=0, max_value=10, value=2)
+    wickets_lost = st.number_input(
+        "Wickets Lost", min_value=0, max_value=10, value=2
+    )
 
 # User enters cumulative last 5 overs
 last_five_runs = st.number_input(
@@ -80,7 +150,12 @@ if st.button("Predict Final Score"):
         st.stop()
 
     # ---- feature engineering (same as training) ----
-    balls_left = 120 - int(overs_completed * 6)
+
+    balls_bowled = int(overs_completed) * 6 + int(
+        round((overs_completed - int(overs_completed)) * 10)
+    )
+
+    balls_left = 120 - balls_bowled
     wickets_left = 10 - wickets_lost
 
     if balls_left < 0:
