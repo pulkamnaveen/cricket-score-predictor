@@ -7,7 +7,7 @@ The app is built using Python, Scikit-Learn, XGBoost and Streamlit.
 
 ## 🚀 Live Demo
 
-https://cricket-score-predictor-jrhbjenslymm256qucr6v.streamlit.app
+https://cricket-score-predictor-jrhbjjenslymm256qucr6v.streamlit.app/
 
 ---
 
