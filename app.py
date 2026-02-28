@@ -489,19 +489,33 @@ if st.session_state.get("prediction_done"):
         overs_remaining = balls_left / 6
         rrr = runs_needed / overs_remaining if overs_remaining > 0 else 99.0
 
-        if predicted_score >= target_score:
-            margin = predicted_score - target_score
-            win_prob = min(95, 55 + margin * 2 + (wickets_left * 2))
-        else:
-            margin = target_score - predicted_score
-            win_prob = max(5, 45 - margin * 2 - ((10 - wickets_left) * 3))
+        # Sigmoid-based probability for smoother, more realistic values
+        # x > 0 means batting team is ahead (predicted > target)
+        score_diff = predicted_score - target_score
 
-        if rrr > 12:
-            win_prob = max(5, win_prob - 15)
-        elif rrr > 10:
-            win_prob = max(5, win_prob - 8)
-        elif rrr < 6:
-            win_prob = min(95, win_prob + 5)
+        # Scale factor: how sensitive the probability is
+        # More overs left = less certain, fewer wickets = less certain
+        certainty = 0.5 + (1 - balls_left / 120) * 0.5  # 0.5 early to 1.0 late
+        wicket_factor = wickets_left / 10  # 1.0 with all wickets, 0.1 with 1
+
+        k = 0.08 * certainty  # steepness of sigmoid
+        raw_prob = 1 / (1 + np.exp(-k * score_diff))
+
+        # Blend with wicket factor (more wickets = more confident)
+        win_prob = raw_prob * wicket_factor + 0.5 * (1 - wicket_factor)
+
+        # Adjust for required run rate pressure
+        if overs_remaining > 0:
+            rr_pressure = rrr - crr  # how much harder they need to score
+            if rr_pressure > 6:
+                win_prob *= 0.7
+            elif rr_pressure > 3:
+                win_prob *= 0.85
+            elif rr_pressure < -3:
+                win_prob = min(0.95, win_prob * 1.15)
+
+        # Clamp between 5% and 95%
+        win_prob = int(round(max(5, min(95, win_prob * 100))))
 
         lose_prob = 100 - win_prob
         st.markdown(f"""
