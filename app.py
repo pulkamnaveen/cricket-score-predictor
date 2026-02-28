@@ -347,16 +347,30 @@ with col6:
         value=30
     )
 with col7:
+    innings = st.radio("Innings", ["1st Innings", "2nd Innings"], horizontal=True)
+
+target_score = 0
+if innings == "2nd Innings":
     target_score = st.number_input(
-        "Target (2nd innings only, 0 if 1st)",
-        min_value=0,
+        "Target Score to Chase",
+        min_value=1,
         max_value=500,
-        value=0
+        value=180
     )
 
 st.markdown("---")
 
 # ==================== PREDICTION ====================
+
+# Helper to predict with custom params
+def predict_score(bat, bowl, ct, score, b_left, w_left, run_rate, l5):
+    df = pd.DataFrame({
+        "batting_team": [bat], "bowling_team": [bowl], "city": [ct],
+        "curr_score": [score], "balls_left": [b_left],
+        "wickets_left": [w_left], "crr": [run_rate], "last_five": [l5]
+    })
+    return int(round(pipe.predict(df)[0]))
+
 
 if st.button("🎯  Predict Final Score"):
 
@@ -376,212 +390,209 @@ if st.button("🎯  Predict Final Score"):
     else:
         crr = current_score / (balls_bowled / 6)
 
-    input_df = pd.DataFrame({
-        "batting_team": [batting_team],
-        "bowling_team": [bowling_team],
-        "city": [city],
-        "curr_score": [current_score],
-        "balls_left": [balls_left],
-        "wickets_left": [wickets_left],
-        "crr": [crr],
-        "last_five": [last_five_runs]
-    })
-
-    # Helper to predict with custom params
-    def predict_score(bat, bowl, ct, score, b_left, w_left, run_rate, l5):
-        df = pd.DataFrame({
-            "batting_team": [bat], "bowling_team": [bowl], "city": [ct],
-            "curr_score": [score], "balls_left": [b_left],
-            "wickets_left": [w_left], "crr": [run_rate], "last_five": [l5]
-        })
-        return int(round(pipe.predict(df)[0]))
-
     try:
         predicted_score = predict_score(
             batting_team, bowling_team, city,
             current_score, balls_left, wickets_left, crr, last_five_runs
         )
-        runs_remaining = predicted_score - current_score
-        overs_left_str = f"{balls_left // 6}.{balls_left % 6}"
 
-        # --- Score Range (simulate slight variations) ---
-        variations = []
-        for l5_adj in [-5, 0, 5]:
-            for w_adj in [-1, 0, 1]:
-                adj_l5 = max(0, last_five_runs + l5_adj)
-                adj_wl = max(1, min(10, wickets_left + w_adj))
-                v = predict_score(
-                    batting_team, bowling_team, city,
-                    current_score, balls_left, adj_wl, crr, adj_l5
-                )
-                variations.append(v)
-        score_low = min(variations)
-        score_high = max(variations)
-
-        # --- Win Probability (2nd innings) ---
-        win_prob = None
-        rrr = None
-        if target_score > 0:
-            runs_needed = target_score - current_score
-            overs_remaining = balls_left / 6
-            if overs_remaining > 0:
-                rrr = runs_needed / overs_remaining
-            else:
-                rrr = 99.0
-
-            # Simple probability based on predicted score vs target
-            if predicted_score >= target_score:
-                margin = predicted_score - target_score
-                win_prob = min(95, 55 + margin * 2 + (wickets_left * 2))
-            else:
-                margin = target_score - predicted_score
-                win_prob = max(5, 45 - margin * 2 - ((10 - wickets_left) * 3))
-
-            # Adjust for run rate pressure
-            if rrr > 12:
-                win_prob = max(5, win_prob - 15)
-            elif rrr > 10:
-                win_prob = max(5, win_prob - 8)
-            elif rrr < 6:
-                win_prob = min(95, win_prob + 5)
-
-        # ==================== DISPLAY RESULTS ====================
-
-        # Big prediction display
-        st.markdown(f"""
-        <div class="prediction-box">
-            <div class="prediction-label">Predicted Final Score</div>
-            <div class="prediction-score">{predicted_score}</div>
-            <div class="stats-row">
-                <div class="stat-item">
-                    <div class="stat-value">{current_score}</div>
-                    <div class="stat-label">Current</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">{runs_remaining}</div>
-                    <div class="stat-label">Runs to Add</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">{crr:.1f}</div>
-                    <div class="stat-label">Run Rate</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">{overs_left_str}</div>
-                    <div class="stat-label">Overs Left</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">{wickets_left}</div>
-                    <div class="stat-label">Wickets Left</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Score range
-        st.markdown(f"""
-        <div class="range-box">
-            <div class="range-text">{score_low} — {score_high}</div>
-            <div class="range-sub">Estimated score range based on match variables</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Win probability (only for 2nd innings)
-        if win_prob is not None:
-            lose_prob = 100 - win_prob
-            st.markdown(f"""
-            <div class="win-prob-container">
-                <div class="win-prob-title">Win Probability</div>
-                <div class="win-bar-bg">
-                    <div class="win-bar-fill" style="width:{win_prob}%"></div>
-                </div>
-                <div class="win-bar-labels">
-                    <span class="win-team">{batting_team} <span class="win-pct">{win_prob}%</span></span>
-                    <span class="win-team"><span class="win-pct">{lose_prob}%</span> {bowling_team}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Required run rate
-            st.markdown(f"""
-            <div class="range-box">
-                <div class="range-text">RRR: {rrr:.2f}</div>
-                <div class="range-sub">Required run rate to reach target of {target_score}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("---")
-
-        # ==================== WHAT-IF SIMULATOR ====================
-        st.markdown('<div class="whatif-title">🔮 What-If Simulator</div>', unsafe_allow_html=True)
-        st.caption("Adjust these sliders to see how the predicted score changes")
-
-        wi_col1, wi_col2 = st.columns(2)
-        with wi_col1:
-            wi_extra_wickets = st.slider(
-                "Extra wickets falling",
-                min_value=0,
-                max_value=max(0, wickets_left - 1),
-                value=0
-            )
-        with wi_col2:
-            wi_rr_change = st.slider(
-                "Run rate change",
-                min_value=-4.0,
-                max_value=4.0,
-                value=0.0,
-                step=0.5
-            )
-
-        wi_col3, wi_col4 = st.columns(2)
-        with wi_col3:
-            wi_l5_change = st.slider(
-                "Last 5 overs runs change",
-                min_value=-20,
-                max_value=20,
-                value=0,
-                step=5
-            )
-        with wi_col4:
-            wi_score_change = st.slider(
-                "Current score adjustment",
-                min_value=-30,
-                max_value=30,
-                value=0,
-                step=5
-            )
-
-        # Calculate what-if prediction
-        wi_wickets_left = max(1, wickets_left - wi_extra_wickets)
-        wi_crr = max(0, crr + wi_rr_change)
-        wi_l5 = max(0, last_five_runs + wi_l5_change)
-        wi_score = max(0, current_score + wi_score_change)
-
-        wi_predicted = predict_score(
-            batting_team, bowling_team, city,
-            wi_score, balls_left, wi_wickets_left, wi_crr, wi_l5
-        )
-        wi_diff = wi_predicted - predicted_score
-
-        if wi_diff > 0:
-            diff_class = "whatif-up"
-            diff_text = f"▲ {wi_diff} more than base prediction"
-        elif wi_diff < 0:
-            diff_class = "whatif-down"
-            diff_text = f"▼ {abs(wi_diff)} less than base prediction"
-        else:
-            diff_class = "whatif-same"
-            diff_text = "Same as base prediction"
-
-        st.markdown(f"""
-        <div class="whatif-result">
-            <div class="whatif-score">{wi_predicted}</div>
-            <div class="whatif-diff {diff_class}">{diff_text}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Save to session state so What-If works outside button
+        st.session_state.prediction_done = True
+        st.session_state.predicted_score = predicted_score
+        st.session_state.balls_left = balls_left
+        st.session_state.wickets_left = wickets_left
+        st.session_state.crr = crr
+        st.session_state.target_score = target_score
+        st.session_state.batting_team = batting_team
+        st.session_state.bowling_team = bowling_team
+        st.session_state.city = city
+        st.session_state.current_score = current_score
+        st.session_state.last_five_runs = last_five_runs
 
     except Exception as e:
         st.error("Prediction failed")
         st.exception(e)
+
+
+# ==================== DISPLAY RESULTS ====================
+if st.session_state.get("prediction_done"):
+
+    predicted_score = st.session_state.predicted_score
+    balls_left = st.session_state.balls_left
+    wickets_left = st.session_state.wickets_left
+    crr = st.session_state.crr
+    target_score = st.session_state.target_score
+    bat_team = st.session_state.batting_team
+    bowl_team = st.session_state.bowling_team
+    s_city = st.session_state.city
+    s_score = st.session_state.current_score
+    s_l5 = st.session_state.last_five_runs
+
+    runs_remaining = predicted_score - s_score
+    overs_left_str = f"{balls_left // 6}.{balls_left % 6}"
+
+    # --- Score Range ---
+    variations = []
+    for l5_adj in [-5, 0, 5]:
+        for w_adj in [-1, 0, 1]:
+            adj_l5 = max(0, s_l5 + l5_adj)
+            adj_wl = max(1, min(10, wickets_left + w_adj))
+            v = predict_score(
+                bat_team, bowl_team, s_city,
+                s_score, balls_left, adj_wl, crr, adj_l5
+            )
+            variations.append(v)
+    score_low = min(variations)
+    score_high = max(variations)
+
+    # Big prediction display
+    st.markdown(f"""
+    <div class="prediction-box">
+        <div class="prediction-label">Predicted Final Score</div>
+        <div class="prediction-score">{predicted_score}</div>
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="stat-value">{s_score}</div>
+                <div class="stat-label">Current</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{runs_remaining}</div>
+                <div class="stat-label">Runs to Add</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{crr:.1f}</div>
+                <div class="stat-label">Run Rate</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{overs_left_str}</div>
+                <div class="stat-label">Overs Left</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{wickets_left}</div>
+                <div class="stat-label">Wickets Left</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Score range
+    st.markdown(f"""
+    <div class="range-box">
+        <div class="range-text">{score_low} — {score_high}</div>
+        <div class="range-sub">Estimated score range based on match variables</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- Win Probability (only for 2nd innings) ---
+    if target_score > 0:
+        runs_needed = target_score - s_score
+        overs_remaining = balls_left / 6
+        rrr = runs_needed / overs_remaining if overs_remaining > 0 else 99.0
+
+        if predicted_score >= target_score:
+            margin = predicted_score - target_score
+            win_prob = min(95, 55 + margin * 2 + (wickets_left * 2))
+        else:
+            margin = target_score - predicted_score
+            win_prob = max(5, 45 - margin * 2 - ((10 - wickets_left) * 3))
+
+        if rrr > 12:
+            win_prob = max(5, win_prob - 15)
+        elif rrr > 10:
+            win_prob = max(5, win_prob - 8)
+        elif rrr < 6:
+            win_prob = min(95, win_prob + 5)
+
+        lose_prob = 100 - win_prob
+        st.markdown(f"""
+        <div class="win-prob-container">
+            <div class="win-prob-title">Win Probability</div>
+            <div class="win-bar-bg">
+                <div class="win-bar-fill" style="width:{win_prob}%"></div>
+            </div>
+            <div class="win-bar-labels">
+                <span class="win-team">{bat_team} <span class="win-pct">{win_prob}%</span></span>
+                <span class="win-team"><span class="win-pct">{lose_prob}%</span> {bowl_team}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="range-box">
+            <div class="range-text">RRR: {rrr:.2f}</div>
+            <div class="range-sub">Required run rate to reach target of {target_score}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ==================== WHAT-IF SIMULATOR ====================
+    st.markdown('<div class="whatif-title">🔮 What-If Simulator</div>', unsafe_allow_html=True)
+    st.caption("Adjust these sliders to see how the predicted score changes")
+
+    wi_col1, wi_col2 = st.columns(2)
+    with wi_col1:
+        wi_extra_wickets = st.slider(
+            "Extra wickets falling",
+            min_value=0,
+            max_value=max(0, wickets_left - 1),
+            value=0
+        )
+    with wi_col2:
+        wi_rr_change = st.slider(
+            "Run rate change",
+            min_value=-4.0,
+            max_value=4.0,
+            value=0.0,
+            step=0.5
+        )
+
+    wi_col3, wi_col4 = st.columns(2)
+    with wi_col3:
+        wi_l5_change = st.slider(
+            "Last 5 overs runs change",
+            min_value=-20,
+            max_value=20,
+            value=0,
+            step=5
+        )
+    with wi_col4:
+        wi_score_change = st.slider(
+            "Current score adjustment",
+            min_value=-30,
+            max_value=30,
+            value=0,
+            step=5
+        )
+
+    # Calculate what-if prediction
+    wi_wickets_left = max(1, wickets_left - wi_extra_wickets)
+    wi_crr = max(0, crr + wi_rr_change)
+    wi_l5 = max(0, s_l5 + wi_l5_change)
+    wi_score = max(0, s_score + wi_score_change)
+
+    wi_predicted = predict_score(
+        bat_team, bowl_team, s_city,
+        wi_score, balls_left, wi_wickets_left, wi_crr, wi_l5
+    )
+    wi_diff = wi_predicted - predicted_score
+
+    if wi_diff > 0:
+        diff_class = "whatif-up"
+        diff_text = f"▲ {wi_diff} more than base prediction"
+    elif wi_diff < 0:
+        diff_class = "whatif-down"
+        diff_text = f"▼ {abs(wi_diff)} less than base prediction"
+    else:
+        diff_class = "whatif-same"
+        diff_text = "Same as base prediction"
+
+    st.markdown(f"""
+    <div class="whatif-result">
+        <div class="whatif-score">{wi_predicted}</div>
+        <div class="whatif-diff {diff_class}">{diff_text}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
