@@ -13,9 +13,9 @@ st.set_page_config(
 # ---------------- Custom CSS ----------------
 st.markdown("""
 <style>
-    /* Warm cream background — like a sports page */
+    /* Soft blue background */
     .stApp {
-        background: #f5f0e8;
+        background: #eef2f7;
     }
 
     /* Hide streamlit chrome */
@@ -503,44 +503,48 @@ if st.session_state.get("done"):
 
     st.markdown("---")
 
-    # --- What-if simulator ---
-    st.markdown('<div class="sec-head">🔮 What-If Simulator</div>', unsafe_allow_html=True)
-    st.caption("Move the sliders to explore different scenarios")
+    # --- What-if simulator (fragment so sliders don't rerun full page) ---
+    @st.fragment
+    def whatif_simulator():
+        st.markdown('<div class="sec-head">🔮 What-If Simulator</div>', unsafe_allow_html=True)
+        st.caption("Move the sliders to explore different scenarios")
 
-    wc1, wc2 = st.columns(2)
-    with wc1:
-        wi_wk = st.slider("Extra wickets falling", 0, max(0, wickets_left - 1), 0)
-    with wc2:
-        wi_rr = st.slider("Run rate change", -4.0, 4.0, 0.0, 0.5)
+        wc1, wc2 = st.columns(2)
+        with wc1:
+            wi_wk = st.slider("Extra wickets falling", 0, max(1, wickets_left - 1), 0, key="wi_wk")
+        with wc2:
+            wi_rr = st.slider("Run rate change", -4.0, 4.0, 0.0, 0.5, key="wi_rr")
 
-    wc3, wc4 = st.columns(2)
-    with wc3:
-        wi_l5 = st.slider("Last 5 overs runs change", -20, 20, 0, 5)
-    with wc4:
-        wi_sc = st.slider("Current score adjustment", -30, 30, 0, 5)
+        wc3, wc4 = st.columns(2)
+        with wc3:
+            wi_l5 = st.slider("Last 5 overs runs change", -20, 20, 0, 5, key="wi_l5")
+        with wc4:
+            wi_sc = st.slider("Current score adjustment", -30, 30, 0, 5, key="wi_sc")
 
-    wi_pred = predict_score(
-        bat_team, bowl_team, s_city,
-        max(0, s_score + wi_sc), balls_left,
-        max(1, wickets_left - wi_wk),
-        max(0, crr + wi_rr),
-        max(0, s_l5 + wi_l5)
-    )
-    diff = wi_pred - predicted_score
+        wi_pred = predict_score(
+            bat_team, bowl_team, s_city,
+            max(0, s_score + wi_sc), balls_left,
+            max(1, wickets_left - wi_wk),
+            max(0.1, crr + wi_rr),
+            max(0, s_l5 + wi_l5)
+        )
+        diff = wi_pred - predicted_score
 
-    if diff > 0:
-        cls, msg = "msg-up", f"▲ {diff} runs more than base prediction"
-    elif diff < 0:
-        cls, msg = "msg-down", f"▼ {abs(diff)} runs less than base prediction"
-    else:
-        cls, msg = "msg-same", "Same as base prediction"
+        if diff > 0:
+            cls, msg = "msg-up", f"▲ {diff} runs more than base prediction"
+        elif diff < 0:
+            cls, msg = "msg-down", f"▼ {abs(diff)} runs less than base prediction"
+        else:
+            cls, msg = "msg-same", "Same as base prediction"
 
-    st.markdown(f"""
-    <div class="whatif-box">
-        <div class="whatif-num">{wi_pred}</div>
-        <div class="whatif-msg {cls}">{msg}</div>
-    </div>
-    """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="whatif-box">
+            <div class="whatif-num">{wi_pred}</div>
+            <div class="whatif-msg {cls}">{msg}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    whatif_simulator()
 
 # ==================== FOOTER ====================
 st.markdown("---")
