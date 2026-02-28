@@ -12,143 +12,116 @@ st.set_page_config(
 # ---------------- Custom CSS ----------------
 st.markdown("""
 <style>
-    /* Overall background */
+    /* Warm, clean background */
     .stApp {
-        background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0d2137 100%);
+        background: #1b2838;
     }
 
-    /* Header banner */
+    /* Header */
     .hero-banner {
-        background: linear-gradient(135deg, #1e6f3e 0%, #2d8f4e 50%, #1a5c32 100%);
-        border-radius: 16px;
-        padding: 2rem 1.5rem;
+        background: #276749;
+        border-radius: 10px;
+        padding: 1.8rem 1.5rem;
         text-align: center;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-        border: 1px solid rgba(255,255,255,0.1);
+        margin-bottom: 1.2rem;
     }
     .hero-banner h1 {
-        color: #ffffff;
-        font-size: 2.2rem;
+        color: #fff;
+        font-size: 1.9rem;
         margin: 0;
-        font-weight: 700;
-        letter-spacing: 1px;
+        font-weight: 600;
     }
     .hero-banner p {
-        color: rgba(255,255,255,0.8);
-        font-size: 1rem;
-        margin: 0.5rem 0 0 0;
+        color: #c6e4d0;
+        font-size: 0.95rem;
+        margin: 0.4rem 0 0 0;
+        font-weight: 400;
     }
 
-    /* Section cards */
-    .section-card {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px;
-        padding: 1.2rem 1.5rem;
-        margin-bottom: 1rem;
-        backdrop-filter: blur(10px);
-    }
+    /* Section headings */
     .section-title {
-        color: #4ecdc4;
-        font-size: 0.85rem;
+        color: #81c9b4;
+        font-size: 0.9rem;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-bottom: 0.8rem;
+        margin-bottom: 0.6rem;
     }
 
-    /* Prediction result */
+    /* Prediction result card */
     .prediction-box {
-        background: linear-gradient(135deg, #1e6f3e 0%, #2d8f4e 100%);
-        border-radius: 16px;
-        padding: 2rem;
+        background: #276749;
+        border-radius: 10px;
+        padding: 1.8rem;
         text-align: center;
-        box-shadow: 0 8px 32px rgba(46,143,78,0.3);
-        border: 1px solid rgba(255,255,255,0.15);
-        animation: fadeIn 0.5s ease-in;
+        margin-top: 0.5rem;
     }
     .prediction-label {
-        color: rgba(255,255,255,0.8);
-        font-size: 1rem;
-        margin-bottom: 0.3rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+        color: #c6e4d0;
+        font-size: 0.95rem;
+        margin-bottom: 0.2rem;
     }
     .prediction-score {
-        color: #ffffff;
-        font-size: 3.5rem;
-        font-weight: 800;
-        margin: 0.2rem 0;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        color: #fff;
+        font-size: 3rem;
+        font-weight: 700;
+        margin: 0.3rem 0;
     }
 
-    /* Stats row */
+    /* Stats underneath */
     .stats-row {
         display: flex;
         justify-content: center;
-        gap: 2rem;
+        gap: 1.5rem;
         margin-top: 1rem;
+        flex-wrap: wrap;
     }
     .stat-item {
         text-align: center;
+        min-width: 60px;
     }
     .stat-value {
-        color: #ffffff;
-        font-size: 1.3rem;
-        font-weight: 700;
-    }
-    .stat-label {
-        color: rgba(255,255,255,0.6);
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-    /* Match info bar */
-    .match-info {
-        background: rgba(255,255,255,0.05);
-        border-radius: 12px;
-        padding: 1rem 1.5rem;
-        text-align: center;
-        border: 1px solid rgba(255,255,255,0.1);
-        margin-bottom: 1rem;
-    }
-    .match-vs {
-        color: #4ecdc4;
-        font-size: 1.1rem;
+        color: #fff;
+        font-size: 1.2rem;
         font-weight: 600;
     }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+    .stat-label {
+        color: #a3d5c1;
+        font-size: 0.72rem;
     }
 
-    /* Style the predict button */
+    /* Match info strip */
+    .match-info {
+        background: #223344;
+        border-radius: 8px;
+        padding: 0.7rem 1.2rem;
+        text-align: center;
+        margin-bottom: 0.8rem;
+    }
+    .match-vs {
+        color: #81c9b4;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    /* Predict button */
     div.stButton > button {
-        background: linear-gradient(135deg, #e8a838 0%, #f0c040 100%);
-        color: #1a1a2e;
-        font-weight: 700;
-        font-size: 1.1rem;
+        background: #d4a03c;
+        color: #1b2838;
+        font-weight: 600;
+        font-size: 1rem;
         border: none;
-        border-radius: 12px;
-        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        padding: 0.7rem 2rem;
         width: 100%;
-        letter-spacing: 1px;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(232,168,56,0.3);
+        transition: background 0.2s;
     }
     div.stButton > button:hover {
-        background: linear-gradient(135deg, #f0c040 0%, #e8a838 100%);
-        box-shadow: 0 6px 20px rgba(232,168,56,0.5);
-        transform: translateY(-1px);
+        background: #e2b44e;
     }
 
-    /* Selectbox / input labels */
+    /* Input labels */
     .stSelectbox label, .stNumberInput label {
-        color: rgba(255,255,255,0.85) !important;
-        font-weight: 500 !important;
+        color: #ccc !important;
+        font-weight: 400 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -157,7 +130,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero-banner">
     <h1>🏏 Cricket Score Predictor</h1>
-    <p>T20 match score prediction powered by XGBoost ML</p>
+    <p>Predict the final T20 score based on the current match situation</p>
 </div>
 """, unsafe_allow_html=True)
 
